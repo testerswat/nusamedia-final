@@ -1,1 +1,115 @@
+name: Extract NusaMedia Source
 
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "NusaMedia-Final-Source-Complete-Go126-No-Binaries.zip"
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Find and extract ZIP
+        shell: bash
+        run: |
+          set -e
+
+          ZIP="$(find . -maxdepth 1 -type f -name 'NusaMedia-Final-Source-Complete-Go126-No-Binaries.zip' -print -quit)"
+
+          if [ -z "$ZIP" ]; then
+            echo "ZIP NusaMedia tidak ditemukan di root repository."
+            echo "Isi repository:"
+            find . -maxdepth 2 -type f -print
+            exit 1
+          fi
+
+          mkdir -p /tmp/nusamedia
+          unzip -q "$ZIP" -d /tmp/nusamedia
+
+          echo "ZIP berhasil diekstrak."
+
+      - name: Detect source root
+        shell: bash
+        run: |
+          set -e
+
+          ROOT="/tmp/nusamedia"
+
+          if [ -f "$ROOT/Dockerfile" ]; then
+            SOURCE="$ROOT"
+          else
+            SOURCE="$(dirname "$(find "$ROOT" -name Dockerfile -type f -print -quit)")"
+          fi
+
+          if [ -z "$SOURCE" ] || [ "$SOURCE" = "." ]; then
+            echo "Dockerfile NusaMedia tidak ditemukan."
+            exit 1
+          fi
+
+          echo "SOURCE=$SOURCE" >> "$GITHUB_ENV"
+
+      - name: Copy source to repository
+        shell: bash
+        run: |
+          set -e
+
+          find . -mindepth 1 -maxdepth 1 \
+            ! -name ".git" \
+            ! -name ".github" \
+            -exec rm -rf {} +
+
+          cp -a "$SOURCE"/. .
+
+      - name: Remove installer binaries
+        shell: bash
+        run: |
+          rm -f \
+            installer/bin/NusaMedia-Installer-Windows-amd64.exe \
+            installer/bin/nusamedia-installer-linux-amd64 \
+            installer/bin/nusamedia-installer-macos-amd64 \
+            installer/bin/nusamedia-installer-macos-arm64
+
+      - name: Validate NusaMedia source
+        shell: bash
+        run: |
+          set -e
+
+          test -f Dockerfile
+          test -f apps/api/go.mod
+          test -d apps/web
+          test -d apps/admin
+
+          echo "NusaMedia source validation OK."
+
+          if find installer/bin -type f 2>/dev/null | grep -E '(\.exe$|installer-(linux|macos)-)'; then
+            echo "Installer binary masih ditemukan."
+            exit 1
+          fi
+
+      - name: Remove ZIP
+        run: |
+          rm -f NusaMedia-Final-Source-Complete-Go126-No-Binaries.zip
+
+      - name: Commit extracted source
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan."
+            exit 0
+          fi
+
+          git commit -m "Extract NusaMedia source"
+          git push
