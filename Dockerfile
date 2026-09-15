@@ -15,7 +15,7 @@ WORKDIR /src
 COPY apps/api/go.mod ./apps/api/
 RUN cd apps/api && go mod download
 COPY apps/api ./apps/api
-RUN cd apps/api && go build -o /out/nusamedia ./cmd/server
+RUN cd apps/api && go mod tidy && go build -o /out/nusamedia ./cmd/server
 
 FROM alpine:3.21
 RUN addgroup -S nusamedia && adduser -S nusamedia -G nusamedia
