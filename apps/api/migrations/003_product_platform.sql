@@ -1,0 +1,23 @@
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone text UNIQUE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS bio text NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar_url text NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS interests text NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS location_text text NOT NULL DEFAULT '';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login_at timestamptz;
+
+CREATE TABLE IF NOT EXISTS saves(post_id uuid REFERENCES posts(id) ON DELETE CASCADE,user_id uuid REFERENCES users(id) ON DELETE CASCADE,created_at timestamptz NOT NULL DEFAULT now(),PRIMARY KEY(post_id,user_id));
+CREATE TABLE IF NOT EXISTS shares(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),post_id uuid REFERENCES posts(id) ON DELETE CASCADE,user_id uuid REFERENCES users(id) ON DELETE CASCADE,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS stories(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES users(id) ON DELETE CASCADE,caption text NOT NULL DEFAULT '',media_url text NOT NULL DEFAULT '',expires_at timestamptz NOT NULL DEFAULT now()+interval '24 hours',created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS reels(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES users(id) ON DELETE CASCADE,caption text NOT NULL DEFAULT '',media_url text NOT NULL DEFAULT '',created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS verification_requests(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid UNIQUE REFERENCES users(id) ON DELETE CASCADE,requested_type text NOT NULL,document_url text NOT NULL DEFAULT '',status text NOT NULL DEFAULT 'PENDING',review_note text NOT NULL DEFAULT '',created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS orders(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),buyer_id uuid REFERENCES users(id),product_id uuid REFERENCES products(id),quantity int NOT NULL CHECK(quantity>0),total_amount bigint NOT NULL CHECK(total_amount>=0),status text NOT NULL DEFAULT 'PENDING_PAYMENT',payment_status text NOT NULL DEFAULT 'UNPAID',created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS wallet_accounts(user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,balance bigint NOT NULL DEFAULT 0,updated_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS wallet_transactions(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),user_id uuid REFERENCES users(id) ON DELETE CASCADE,type text NOT NULL,amount bigint NOT NULL,description text NOT NULL DEFAULT '',created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS reports(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),reporter_id uuid REFERENCES users(id),target_type text NOT NULL,target_id uuid NOT NULL,reason text NOT NULL,status text NOT NULL DEFAULT 'OPEN',created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS audit_logs(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),actor_id uuid REFERENCES users(id),action text NOT NULL,target_type text NOT NULL,target_id text NOT NULL,metadata jsonb NOT NULL DEFAULT '{}'::jsonb,created_at timestamptz NOT NULL DEFAULT now());
+CREATE TABLE IF NOT EXISTS admin_roles(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text UNIQUE NOT NULL,permissions jsonb NOT NULL DEFAULT '[]'::jsonb);
+CREATE TABLE IF NOT EXISTS platform_integrations(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),name text UNIQUE NOT NULL,provider text NOT NULL,status text NOT NULL DEFAULT 'CONFIGURE',config jsonb NOT NULL DEFAULT '{}'::jsonb,updated_at timestamptz NOT NULL DEFAULT now());
+CREATE INDEX IF NOT EXISTS idx_notifications_user_created ON notifications(user_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_stories_expiry ON stories(expires_at);
+CREATE INDEX IF NOT EXISTS idx_orders_buyer_created ON orders(buyer_id,created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_user_created ON wallet_transactions(user_id,created_at DESC);

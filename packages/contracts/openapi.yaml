@@ -1,0 +1,109 @@
+openapi: 3.0.3
+info:
+  title: NusaMedia API
+  version: 1.0.0
+  description: NusaMedia production-oriented API contract. External payment, storage, maps, AI and push providers are configured separately.
+paths:
+  /health:
+    get: {responses: {'200': {description: OK}}}
+  /api/v1/auth/register:
+    post: {requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RegisterRequest'}}}}, responses: {'201': {description: Created}, '409': {description: Conflict}}}
+  /api/v1/auth/login:
+    post: {requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/LoginRequest'}}}}, responses: {'200': {description: OK}, '401': {description: Unauthorized}}}
+  /api/v1/feed:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Feed}}}
+  /api/v1/posts:
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Created}}}
+  /api/v1/posts/{id}/like:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Like state}}}
+  /api/v1/posts/{id}/comments:
+    get: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Comments}}}
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'201': {description: Comment}}}
+  /api/v1/stories:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Active stories}}}
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Created}}}
+  /api/v1/reels:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Reels}}}
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Created}}}
+  /api/v1/profile:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Profile}}}
+    put: {security: [{bearerAuth: []}], responses: {'200': {description: Updated profile}}}
+  /api/v1/notifications:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Notifications}}}
+  /api/v1/notifications/{id}/read:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Read}}}
+  /api/v1/search:
+    get: {security: [{bearerAuth: []}], parameters: [{name: q,in: query,required: true,schema: {type: string,minLength: 2}}], responses: {'200': {description: Search results}}}
+  /api/v1/verification:
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Verification submitted}}}
+  /api/v1/products:
+    get: {responses: {'200': {description: Products}}}
+  /api/v1/orders:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Buyer orders}}}
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Order created}}}
+  /api/v1/orders/{id}/pay:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Payment result}, '422': {description: Payment unavailable or invalid}}}
+  /api/v1/wallet:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Wallet}}}
+  /api/v1/wallet/transactions:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Wallet ledger}}}
+  /api/v1/wallet/topup:
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Development-only ledger topup}, '501': {description: Real payment provider required}}}
+  /api/v1/reports:
+    post: {security: [{bearerAuth: []}], responses: {'201': {description: Report created}}}
+  /api/v1/admin/dashboard:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Admin metrics}, '403': {description: Forbidden}}}
+  /api/v1/setup/bootstrap:
+    post: {responses: {'201': {description: Admin Root created}, '403': {description: Invalid setup token}, '409': {description: Setup already complete}}}
+  /api/v1/admin/control/roles:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Role catalog}}}
+  /api/v1/admin/control/users:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Administrative users}}}
+  /api/v1/admin/control/users/{id}/department:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Department assigned}, '403': {description: Admin Root required}}}
+  /api/v1/admin/control/users/{id}/role:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Role granted}, '403': {description: Admin Root required}}}
+    delete: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Role revoked}, '403': {description: Admin Root required}}}
+  /api/v1/admin/control/integrations:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Provider integrations}}}
+    put: {security: [{bearerAuth: []}], responses: {'200': {description: Integration saved}, '403': {description: Admin Root required}}}
+  /api/v1/admin/control/deployments:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Deployment history}}}
+    post: {security: [{bearerAuth: []}], responses: {'202': {description: Deployment queued}, '403': {description: Admin Root required}}}
+  /api/v1/admin/control/mobile/builds:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Mobile build history}}}
+    post: {security: [{bearerAuth: []}], responses: {'202': {description: Mobile build queued}, '403': {description: Admin Root required}}}
+  /api/v1/admin/workspaces/departments:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Organization departments}}}
+  /api/v1/admin/workspaces:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Team workspaces}}}
+  /api/v1/admin/workspaces/{id}/channels:
+    get: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Workspace channels}}}
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'201': {description: Channel created}, '403': {description: Admin Root required}}}
+  /api/v1/admin/workspaces/{id}/members:
+    get: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Workspace members}}}
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Member granted}, '403': {description: Admin Root required}}}
+  /api/v1/admin/workspaces/{id}/messages:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'201': {description: Message sent and notifications fan out}}}
+  /api/v1/admin/workspace-notifications:
+    get: {security: [{bearerAuth: []}], responses: {'200': {description: Workspace notification inbox}}}
+  /api/v1/admin/workspace-notifications/{id}/read:
+    post: {security: [{bearerAuth: []}], parameters: [{name: id,in: path,required: true,schema: {type: string,format: uuid}}], responses: {'200': {description: Notification marked read}}}
+components:
+  securitySchemes:
+    bearerAuth: {type: http,scheme: bearer,bearerFormat: JWT}
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [username,email,password,displayName]
+      properties:
+        username: {type: string}
+        email: {type: string,format: email}
+        password: {type: string,minLength: 8}
+        displayName: {type: string}
+    LoginRequest:
+      type: object
+      required: [identity,password]
+      properties:
+        identity: {type: string}
+        password: {type: string}

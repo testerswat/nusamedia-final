@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-nusamedia}
+      POSTGRES_USER: ${POSTGRES_USER:-nusamedia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set by installer}
+    ports: ["${POSTGRES_PORT:-5432}:5432"]
+    volumes: ["pgdata:/var/lib/postgresql/data","./apps/api/migrations:/docker-entrypoint-initdb.d:ro"]
+  redis:
+    image: redis:7-alpine
+    ports: ["${REDIS_PORT:-6379}:6379"]
+  app:
+    build: .
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-nusamedia}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-nusamedia}?sslmode=disable
+      JWT_SECRET: ${JWT_SECRET:?set by installer}
+      PORT: 8080
+      DB_DRIVER: postgres
+      REDIS_URL: redis://redis:6379
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:8080}
+      ALLOW_DEVELOPMENT_TOPUP: ${ALLOW_DEVELOPMENT_TOPUP:-false}
+      NUSAMEDIA_SETUP_TOKEN: ${NUSAMEDIA_SETUP_TOKEN:?set by installer}
+    ports: ["${APP_PORT:-8080}:8080"]
+    depends_on: [postgres, redis]
+volumes:
+  pgdata:
