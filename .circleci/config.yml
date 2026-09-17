@@ -1,0 +1,101 @@
+# This config was automatically generated from your source code
+# Stacks detected: artifact:go-executable:,cicd:github-actions:.github/workflows,deps:go:installer,deps:node:apps/admin
+version: 2.1
+orbs:
+  node: circleci/node@5
+jobs:
+  build-node:
+    # Build node project
+    executor: node/default
+    working_directory: ~/project/apps/admin
+    steps:
+      - checkout:
+          path: ~/project
+      - node/install-packages:
+          cache-path: ~/project/node_modules
+          override-ci-command: npm install
+      - run:
+          command: npm run build
+      - run:
+          name: Create the ~/artifacts directory if it doesn't exist
+          command: mkdir -p ~/artifacts
+      # Copy output to artifacts dir
+      - run:
+          name: Copy artifacts
+          command: cp -R build dist public .output .next .docusaurus ~/artifacts 2>/dev/null || true
+      - store_artifacts:
+          path: ~/artifacts
+          destination: node-build
+  test-go:
+    # Install go modules and run tests
+    docker:
+      - image: cimg/go:1.20
+    working_directory: ~/project/installer
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Run tests
+          command: gotestsum --junitfile junit.xml
+      - store_test_results:
+          path: junit.xml
+  build-go-executables:
+    # Build go executables and store them as artifacts
+    docker:
+      - image: cimg/go:1.20
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Create the ~/artifacts directory if it doesn't exist
+          command: mkdir -p ~/artifacts
+      - run:
+          name: Build executables
+          command: go build -o ~/artifacts ./...
+      - store_artifacts:
+          path: ~/artifacts
+          destination: executables
+  deploy:
+    # This is an example deploy job, not actually used by the workflow
+    docker:
+      - image: cimg/base:stable
+    steps:
+      - run:
+          name: Plan deployment
+          command: |-
+            circleci run release plan deploy \
+              --environment-name="default" \
+              --component-name="deploy" \
+              --target-version="1.0.${CIRCLE_BUILD_NUM}-${CIRCLE_SHA1:0:7}"
+      # Replace this with steps to deploy to users
+      - run:
+          name: deploy
+          command: '#e.g. ./deploy.sh'
+      - run:
+          name: found github actions config
+          command: ':'
+      - run:
+          name: Update deployment status to running
+          command: circleci run release update deploy --status=RUNNING
+      - run:
+          name: Update deployment status to success
+          command: circleci run release update deploy --status=SUCCESS
+          when: on_success
+      - run:
+          name: Update deployment status to failed
+          command: circleci run release update deploy --status=FAILED
+          when: on_fail
+workflows:
+  build-and-test:
+    jobs:
+      - build-node:
+          requires:
+            - test-go
+      - test-go
+      - build-go-executables:
+          requires:
+            - test-go
+    # - deploy:
+    #     requires:
+    #       - build-node
+    #       - build-go-executables
